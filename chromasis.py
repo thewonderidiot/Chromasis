@@ -29,7 +29,7 @@ class Chromasis:
 		importmenu.add_command(label="From File",command=self.notyet)
 		exportmenu = Menu(menu)
 		menu.add_cascade(label="Export", menu=exportmenu)
-		exportmenu.add_command(label="To Image",command=self.notyet)
+		exportmenu.add_command(label="To Image",command=self.exportImage)
 		exportmenu.add_command(label="To Python List",command=self.exportList)
 		exportmenu.add_command(label="To File",command=self.notyet)
 		
@@ -82,7 +82,7 @@ class Chromasis:
 		done = False
 		while not done:
 			try:
-				tbo = tkFileDialog.askopenfilename(filetypes=[("Images","*.png"),("Images","*.jpg")])
+				tbo = tkFileDialog.askopenfilename(filetypes=[("Images","*.png"),("Images","*.jpg"),("Images","*.gif")])
 				colors = paletteOps.getColors(tbo)
 			except:
 				print "Failed."
@@ -121,7 +121,25 @@ class Chromasis:
 		print "Exporting current palette to python list."
 		self.master.clipboard_append(str(self.palette.values()))
 		tkMessageBox.showinfo("Palette Exported", "A python list representing the palette has been copied to your clipboard.")
-		
+	
+	def exportImage(self):
+		print "Exporting current palette to an image."
+		done = False
+		while not done:
+			try:
+				tbs = tkFileDialog.asksaveasfilename(defaultextension=".png",filetypes=[("PNG","*.png")])
+				if tbs == None or tbs == '':
+					return
+				print "Exporting palette image...",
+				paletteOps.drawPalette(tbs,self.palette.values(),self.swatchSize,self.xswatches,self.yswatches)
+			except:
+				print "failed."
+				if not tkMessageBox.askretrycancel("Export Failed","Error writing image file."):
+					return
+			else:
+				print "done."
+				done = True
+	
 	def leftClickRelease(self, event):
 		c = self.colorcanvas
 		ss = self.swatchSize

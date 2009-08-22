@@ -62,3 +62,15 @@ def getColors(infile):
 	print "Sorting..."
 	return [p[1] for p in sorted(colors,reverse=True)]
 	
+def drawPalette(outfile, palette, swatchSize, xswatches, yswatches):
+	img = Image.new("RGB",(swatchSize*xswatches,swatchSize*yswatches),"#000000")
+	d = ImageDraw.Draw(img)
+	x=y=0
+	for p in palette:
+		d.rectangle([(x,y),(x+swatchSize-1,y+swatchSize-1)],fill="#%02x%02x%02x" % p)
+		x = x+swatchSize
+		if x >= swatchSize * xswatches:
+			x = 0
+			y = y+swatchSize
+	del d
+	img.save(outfile)
