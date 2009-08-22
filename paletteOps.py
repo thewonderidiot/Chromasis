@@ -27,6 +27,7 @@ def reduce(infile, palette):
 def index(infile,palette):
 	print "Indexing",infile
 	img = Image.open(infile)
+	img = img.convert("RGB")
 	sx,sy = img.size
 	colors = img.getcolors(sx*sy)
 	majors = {}
@@ -46,7 +47,18 @@ def index(infile,palette):
 	for z in zeroes:
 		del majors[z]
 	print "done."
-	majors = sorted(majors.items(), key=lambda(color,num):(num,color), reverse=1)
+	majors = sorted(majors.items(), key=lambda(color,num):(num,color), reverse=True)
 
 	return majors
+	
+def getColors(infile):
+	print "Opening image",infile
+	img = Image.open(infile)
+	print "Converting to RGB..."
+	img = img.convert("RGB")
+	sx, sy = img.size
+	print "Grabbing colors..."
+	colors = img.getcolors(sx*sy)
+	print "Sorting..."
+	return [p[1] for p in sorted(colors,reverse=True)]
 	

@@ -1,5 +1,5 @@
 from Tkinter import *
-import tkColorChooser,tkMessageBox,tkSimpleDialog,Image,ImageTk,math,paletteOps
+import tkColorChooser,tkMessageBox,tkSimpleDialog,tkFileDialog,Image,ImageTk,math,paletteOps
 
 class Chromasis:
 	def __init__(self, master):
@@ -24,7 +24,7 @@ class Chromasis:
 		palettemenu.add_command(label="Settings",command=self.notyet)
 		importmenu = Menu(menu)
 		menu.add_cascade(label="Import", menu=importmenu)
-		importmenu.add_command(label="From Image",command=self.notyet)
+		importmenu.add_command(label="From Image",command=self.importImage)
 		importmenu.add_command(label="From Python List",command=self.importList)
 		importmenu.add_command(label="From File",command=self.notyet)
 		exportmenu = Menu(menu)
@@ -71,29 +71,52 @@ class Chromasis:
 				if not tkMessageBox.askretrycancel("Import Failed","Invalid python list was entered."):
 					return
 			else:
-				self.newPalette()
-				c = self.colorcanvas
-				ss = self.swatchSize
-				xs = self.xswatches
-				ys = self.yswatches
-				x=y=2
-				for l in newlist:
-					print "Importing",l
-					if self.inactiveOutline == "self":
-						outline = "#%02x%02x%02x" % l
-					else:
-						outline = "#%02x%02x%02x" % self.inactiveOutline
-					r = c.create_rectangle(x,y,x+ss-1,y+ss-1,  fill="#%02x%02x%02x" % l,outline=outline,activeoutline="#%02x%02x%02x" % self.activeOutline)
-					self.palette[r] = l
-					x = x + ss
-					if (x >= ss*xs):
-						x = 2
-						y = y + ss
-					if (y >= ss*ys):
-						print "Size of window exceeded. Not all colors could be imported."
-						break
+				if not self.newPalette():
+					return
+				self.populatePalette(newlist)
 				done = True
 				print "Import complete."
+
+	def importImage(self):
+		colors = []
+		done = False
+		while not done:
+			try:
+				tbo = tkFileDialog.askopenfilename(filetypes=[("Images","*.png"),("Images","*.jpg")])
+				colors = paletteOps.getColors(tbo)
+			except:
+				print "Failed."
+				if not tkMessageBox.askretrycancel("Import Failed","Error reading image file."):
+					return
+			else:
+				if not self.newPalette():
+					return
+				self.populatePalette(colors)
+				done = True
+				print "Import complete."
+	
+	def populatePalette(self,newpalette):
+		c = self.colorcanvas
+		ss = self.swatchSize
+		xs = self.xswatches
+		ys = self.yswatches
+		x=y=2
+		for l in newpalette:
+			print "Importing",l
+			if self.inactiveOutline == "self":
+				outline = "#%02x%02x%02x" % l
+			else:
+				outline = "#%02x%02x%02x" % self.inactiveOutline
+			r = c.create_rectangle(x,y,x+ss-1,y+ss-1,  fill="#%02x%02x%02x" % l,outline=outline,activeoutline="#%02x%02x%02x" % self.activeOutline)
+			self.palette[r] = l
+			x = x + ss
+			if (x >= ss*xs):
+				x = 2
+				y = y + ss
+			if (y >= ss*ys):
+				print "Size of window exceeded. Not all colors could be imported."
+				break
+	
 	def exportList(self):
 		print "Exporting current palette to python list."
 		self.master.clipboard_append(str(self.palette.values()))
@@ -121,7 +144,7 @@ class Chromasis:
 				print "Created swatch",r
 			else:
 				r = a[0]
-				newColor = tkColorChooser.askcolor()
+				newColor = tkColorChooser.askcolor(initialcolor=self.palette[r])
 				if newColor[0] == None or newColor[1] == None:
 					return
 				c.itemconfigure(r,fill=newColor[1],outline=newColor[1])
