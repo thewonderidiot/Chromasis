@@ -26,12 +26,12 @@ class Chromasis:
 		menu.add_cascade(label="Import", menu=importmenu)
 		importmenu.add_command(label="From Image",command=self.importImage)
 		importmenu.add_command(label="From Python List",command=self.importList)
-		importmenu.add_command(label="From File",command=self.notyet)
+		importmenu.add_command(label="From File",command=self.importFile)
 		exportmenu = Menu(menu)
 		menu.add_cascade(label="Export", menu=exportmenu)
 		exportmenu.add_command(label="To Image",command=self.exportImage)
 		exportmenu.add_command(label="To Python List",command=self.exportList)
-		exportmenu.add_command(label="To File",command=self.notyet)
+		exportmenu.add_command(label="To File",command=self.exportFile)
 		
 		#Build our canvas
 		c = self.colorcanvas = Canvas(master, bg="#000000", height=ss*ys, width=ss*xs, cursor='crosshair')
@@ -95,6 +95,26 @@ class Chromasis:
 				done = True
 				print "Import complete."
 	
+	def importFile(self):
+		print "Importing palette from a text file."
+		colors = []
+		done = False
+		while not done:
+			try:
+				tbo = tkFileDialog.askopenfilename(filetypes=[("Text","*.txt")])
+				f = open(tbo,"r")
+				for c in f.readlines():
+					colors.append((int(c[1:3],16),int(c[3:5],16),int(c[5:7],16)))
+			except:
+				print "Failed."
+				if not tkMessageBox.askretrycancel("Import Failed","Error reading image file."):
+					return
+			else:
+				if not self.newPalette():
+					return
+				self.populatePalette(colors)
+				done = True
+				print "Import complete."
 	def populatePalette(self,newpalette):
 		c = self.colorcanvas
 		ss = self.swatchSize
@@ -132,6 +152,27 @@ class Chromasis:
 					return
 				print "Exporting palette image...",
 				paletteOps.drawPalette(tbs,self.palette.values(),self.swatchSize,self.xswatches,self.yswatches)
+			except:
+				print "failed."
+				if not tkMessageBox.askretrycancel("Export Failed","Error writing image file."):
+					return
+			else:
+				print "done."
+				done = True
+	
+	def exportFile(self):
+		print "Exporting current palette to a file."
+		done = False
+		while not done:
+			try:
+				tbs = tkFileDialog.asksaveasfilename(defaultextension=".txt",filetypes=[("Text File","*.txt")])
+				if tbs == None or tbs == '':
+					return
+				print "Exporting palette file...",
+				f = open(tbs,'w')
+				for p in self.palette.values():
+					f.write("#%02x%02x%02x\n" % p)
+				f.close()
 			except:
 				print "failed."
 				if not tkMessageBox.askretrycancel("Export Failed","Error writing image file."):
