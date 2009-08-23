@@ -6,6 +6,8 @@ class Chromasis:
 		#Basic stuff
 		self.master = master
 		master.title("Chromasis")
+		master.protocol("WM_DELETE_WINDOW",self.confirmQuit)
+		self.changed = False
 		ss = self.swatchSize = 32
 		xs = self.xswatches = 10
 		ys = self.yswatches = 10
@@ -41,10 +43,11 @@ class Chromasis:
 		c.grid(row=0, sticky=W)
 
 	def newPalette(self):
-		if tkMessageBox.askyesno("Warning!", "This will erase your current palette. Continue?"):
+		if self.confirmIfChanges():
 			self.palette = {}
 			self.colorcanvas.delete(ALL)
 			print "Palette erased"
+			self.changed = False
 			return True
 		return False
 	
@@ -83,6 +86,8 @@ class Chromasis:
 		while not done:
 			try:
 				tbo = tkFileDialog.askopenfilename(filetypes=[("Images","*.png"),("Images","*.jpg"),("Images","*.gif")])
+				if tbo == '':
+					return
 				colors = paletteOps.getColors(tbo)
 			except:
 				print "Failed."
@@ -102,6 +107,8 @@ class Chromasis:
 		while not done:
 			try:
 				tbo = tkFileDialog.askopenfilename(filetypes=[("Text","*.txt")])
+				if tbo == '':
+					return
 				f = open(tbo,"r")
 				for c in f.readlines():
 					colors.append((int(c[1:3],16),int(c[3:5],16),int(c[5:7],16)))
@@ -141,6 +148,7 @@ class Chromasis:
 		print "Exporting current palette to python list."
 		self.master.clipboard_append(str(self.palette.values()))
 		tkMessageBox.showinfo("Palette Exported", "A python list representing the palette has been copied to your clipboard.")
+		self.changed = False
 	
 	def exportImage(self):
 		print "Exporting current palette to an image."
@@ -158,6 +166,7 @@ class Chromasis:
 					return
 			else:
 				print "done."
+				self.changed = False
 				done = True
 	
 	def exportFile(self):
@@ -179,6 +188,7 @@ class Chromasis:
 					return
 			else:
 				print "done."
+				self.changed = False
 				done = True
 	
 	def leftClickRelease(self, event):
@@ -200,6 +210,7 @@ class Chromasis:
 					outline = "#%02x%02x%02x" % self.inactiveOutline
 				r = c.create_rectangle(x,y,x+ss-1,y+ss-1, fill="#%02x%02x%02x" % self.defaultFG,outline=outline,activeoutline="#%02x%02x%02x" % self.activeOutline)
 				self.palette[r] = self.defaultFG
+				self.changed = True
 				print "Created swatch",r
 			else:
 				r = a[0]
@@ -208,6 +219,7 @@ class Chromasis:
 					return
 				c.itemconfigure(r,fill=newColor[1],outline=newColor[1])
 				self.palette[r] = newColor[0]
+				self.changed = True
 				print "Filled swatch",r,"with",newColor[1]
 		else:
 			rpos = c.coords(self.dragging)
@@ -234,9 +246,10 @@ class Chromasis:
 		x,y = self.colorcanvas.canvasx(event.x),self.colorcanvas.canvasy(event.y)
 		tbd = self.colorcanvas.find_overlapping(x,y,x,y)
 		if len(tbd)!=0:
-			print "Deleted swatch",tbd[0]
 			del self.palette[tbd[0]]
 			self.colorcanvas.delete(tbd[0])
+			self.changed = True
+			print "Deleted swatch",tbd[0]
 	
 	def drag(self, event):
 		c = self.colorcanvas
@@ -261,6 +274,13 @@ class Chromasis:
 		
 	def notyet(self):
 		tkMessageBox.showwarning("Feature Unavailable","This feature has not yet been implemented.")
+	
+	def confirmIfChanges(self):
+		return tkMessageBox.askyesno("Warning!", "Your palette has been changed since that last export. Continue?") if self.changed else True
+	
+	def confirmQuit(self):
+		if self.confirmIfChanges():
+			self.master.destroy()
 root = Tk()
 
 app = Chromasis(root)
