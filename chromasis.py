@@ -1,5 +1,5 @@
 from Tkinter import *
-import tkColorChooser,tkMessageBox,tkSimpleDialog,tkFileDialog,Image,ImageTk,math,paletteOps
+import tkColorChooser,tkMessageBox,tkSimpleDialog,tkFileDialog,Image,ImageTk,math,paletteOps,copy
 
 class Chromasis:
 	def __init__(self, master):
@@ -12,18 +12,20 @@ class Chromasis:
 		xs = self.xswatches = 10
 		ys = self.yswatches = 10
 		self.defaultFG = (255,255,255)
+		self.defaultBG = (0,0,0)
 		self.activeOutline = (255,255,255)
 		self.inactiveOutline = "self"
 		self.dragging = None
 		self.palette = {}
-		master.minsize(width=4+ss*xs, height=4+ss*ys)
+		master.resizable(width=False,height=False)
+		#master.minsize(width=160, height=80)
 		#Build the menu
 		menu = Menu(master)
 		master.config(menu=menu)
 		palettemenu = Menu(menu)
 		menu.add_cascade(label="Palette",menu=palettemenu)
 		palettemenu.add_command(label="New",command=self.newPalette)
-		palettemenu.add_command(label="Settings",command=self.notyet)
+		palettemenu.add_command(label="Settings",command=self.showSettings)
 		importmenu = Menu(menu)
 		menu.add_cascade(label="Import", menu=importmenu)
 		importmenu.add_command(label="From Image",command=self.importImage)
@@ -129,7 +131,6 @@ class Chromasis:
 		ys = self.yswatches
 		x=y=2
 		for l in newpalette:
-			print "Importing",l
 			if self.inactiveOutline == "self":
 				outline = "#%02x%02x%02x" % l
 			else:
@@ -271,6 +272,27 @@ class Chromasis:
 			x = x-self.dxoffset
 			y = y-self.dyoffset
 			c.coords(self.dragging,x,y,x+self.swatchSize-1,y+self.swatchSize-1)
+			
+	def showSettings(self):
+		settings = Settings(self)
+		
+	def updateSettings(self, swatchSize, xswatches, yswatches, defaultFG, defaultBG, activeOutline):
+		self.swatchSize = swatchSize
+		self.xswatches = xswatches
+		self.yswatches = yswatches
+		self.defaultFG = defaultFG
+		self.defaultBG = defaultBG
+		self.activeOutline = activeOutline
+		self.colorcanvas.config(bg="#%02x%02x%02x" % defaultBG)
+		xsize = max(4+swatchSize*xswatches,160)
+		ysize = max(4+swatchSize*yswatches,80)
+		self.master.geometry("%dx%d" % (xsize if xsize>160 else 160,4+swatchSize*yswatches))
+		self.colorcanvas.config(width=swatchSize*xswatches, height=swatchSize*yswatches)
+		print "Settings imported. Redrawing palette with new settings."
+		self.colorcanvas.delete(ALL)
+		temppalette = self.palette.values()
+		self.palette = {}
+		self.populatePalette(temppalette)
 		
 	def notyet(self):
 		tkMessageBox.showwarning("Feature Unavailable","This feature has not yet been implemented.")
@@ -281,6 +303,80 @@ class Chromasis:
 	def confirmQuit(self):
 		if self.confirmIfChanges():
 			self.master.destroy()
+
+			
+class Settings:
+	def __init__(self,parent):
+		self.parent = parent
+		self.w = settings = Toplevel()
+		self.defaultBG = parent.defaultBG
+		self.defaultFG = parent.defaultFG
+		self.activeOutline = parent.activeOutline
+		settings.transient(parent.master)
+		settings.title("Chromasis - Settings")
+		settings.grab_set()
+		settings.geometry("+%d+%d" % (parent.master.winfo_rootx()+50,parent.master.winfo_rooty()+50))
+		frame = Frame(settings)
+		frame.pack(padx=5,pady=5)
+		Label(frame,text="Swatch Size:").grid(row=0, sticky=W)
+		Label(frame,text="Palette Width:").grid(row=1, sticky=W)
+		Label(frame,text="Palette Height:").grid(row=2, sticky=W)
+		Label(frame,text="Background Color:").grid(row=3, sticky=W)
+		Label(frame,text="Foreground Color:").grid(row=4, sticky=W)
+		Label(frame,text="Highlight Color:").grid(row=5, sticky=W)
+		#Label(settings,text="Border Color:").grid(row=6, sticky=W)
+		self.ss = ss = IntVar()
+		ss.set(parent.swatchSize)
+		self.xs = xs = IntVar()
+		xs.set(parent.xswatches)
+		self.ys = ys = IntVar()
+		ys.set(parent.yswatches)
+		Scale(frame,variable=ss,from_=2,to=256,orient=HORIZONTAL,length=300).grid(row=0,column=1)
+		Scale(frame,variable=xs,from_=2,to=256,orient=HORIZONTAL,length=300).grid(row=1,column=1)
+		Scale(frame,variable=ys,from_=2,to=256,orient=HORIZONTAL,length=300).grid(row=2,column=1)
+		bgb = self.bgButton = Button(frame,width=8,bg="#%02x%02x%02x" % parent.defaultBG,command=self.setBG)
+		bgb.grid(row=3,column=1)
+		fgb = self.fgButton = Button(frame,width=8,bg="#%02x%02x%02x" % parent.defaultFG,command=self.setFG)
+		fgb.grid(row=4,column=1)
+		hlb = self.hlButton = Button(frame,width=8,bg="#%02x%02x%02x" % parent.activeOutline,command=self.setHL)
+		hlb.grid(row=5,column=1)
+		buttons = Frame(settings)
+		buttons.pack()
+		Button(buttons,text="Okay",width=10,command=self.saveChanges).pack(side=LEFT,padx=5,pady=5)
+		Button(buttons,text="Cancel",width=10,command=self.close).pack(side=LEFT,padx=5,pady=5)
+		frame.focus_set()
+		parent.master.wait_window(settings)
+
+
+	def setBG(self):
+		newColor = tkColorChooser.askcolor(initialcolor=self.bgButton.cget("bg"))
+		if newColor[0] == None or newColor[1] == None:
+					return
+		self.bgButton.config(bg=newColor[1])
+		self.defaultBG = newColor[0]
+	
+	def setFG(self):
+		newColor = tkColorChooser.askcolor(initialcolor=self.fgButton.cget("bg"))
+		if newColor[0] == None or newColor[1] == None:
+					return
+		self.fgButton.config(bg=newColor[1])
+		self.defaultFG = newColor[0]
+		
+	def setHL(self):
+		newColor = tkColorChooser.askcolor(initialcolor=self.hlButton.cget("bg"))
+		if newColor[0] == None or newColor[1] == None:
+					return
+		self.hlButton.config(bg=newColor[1])
+		self.activeOutline = newColor[0]
+		
+	def saveChanges(self):
+		self.parent.updateSettings(swatchSize=self.ss.get(),xswatches=self.xs.get(),yswatches=self.ys.get(),defaultFG=self.defaultFG,defaultBG=self.defaultBG,activeOutline=self.activeOutline)
+		self.close()
+	
+	def close(self):
+		self.parent.master.focus_set()
+		self.w.destroy()
+		
 root = Tk()
 
 app = Chromasis(root)
